@@ -754,10 +754,14 @@
               <div class="ud-avatar" id="udAvatar">P</div>
               <div class="ud-info">
                 <strong id="udName">User</strong>
-                <span id="udEmail">user@email.com</span>
+                <span id="udEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7401071106341119151d185a171b19">[email&#160;protected]</a></span>
               </div>
             </div>
             <a href="my-builds.html"><i class="fas fa-folder"></i> My Builds</a>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> My Profile</a>
+            <a href="price-history.html"><i class="fas fa-chart-line"></i> Price History</a>
+            <a href="leaderboard.html"><i class="fas fa-trophy"></i> Leaderboard</a>
+            <a href="checklist.html"><i class="fas fa-clipboard-check"></i> Assembly Checklist</a>
             <a href="#" onclick="openSecuritySettings(); return false;"><i class="fas fa-shield-alt"></i> Security Settings</a>
             <a href="admin.html" id="adminMenuBtn" style="display:none;"><i class="fas fa-crown"></i> Admin Panel</a>
             <hr>
@@ -952,6 +956,11 @@
         </button>
       </div>
 
+      <div style="margin:10px 0;">
+        <a href="checklist.html" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);border-radius:10px;color:var(--gold);font-size:13px;font-weight:700;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,212,255,0.15)'" onmouseout="this.style.background='rgba(0,212,255,0.08)'">
+          <i class="fas fa-clipboard-check"></i> Assembly Checklist
+        </a>
+      </div>
       <div class="java-actions" style="display: flex; gap: 10px; margin: 15px 0;">
         <button class="action-btn" style="flex:1; background: var(--gold); color: var(--bg-dark); border:none; border-radius:40px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; transition:transform .15s, box-shadow .15s;"
           onclick="openJavaToolsModal()"
@@ -1322,7 +1331,7 @@
 
   <div class="modal" id="videoModal"><div class="modal-content video-modal"><div class="modal-header"><h2>NVIDIA GeForce RTX 5090</h2><button class="modal-close" onclick="closeVideoModal()">&times;</button></div><div class="video-container"><video controls id="fullVideoPlayer"><source src="Images/rtx-5090.mp4" type="video/mp4"></video></div></div></div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 
     let allProducts = [];
     let currentCategoryProducts = [];
@@ -1991,6 +2000,74 @@
     window.filterCategory = filterCategory;
     window.showAllProducts = showAllProducts;
 
+    function openSecuritySettings() {
+      ['secCurrent','secNew','secConfirm'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      document.getElementById('securitySettingsModal').style.display = 'flex';
+
+      document.getElementById('userDropdown')?.classList.remove('show');
+      document.getElementById('userMenuTrigger')?.classList.remove('open');
+    }
+
+    function closeSecuritySettings() {
+      document.getElementById('securitySettingsModal').style.display = 'none';
+    }
+
+    async function doChangePassword() {
+      const cur  = document.getElementById('secCurrent').value;
+      const next = document.getElementById('secNew').value;
+      const conf = document.getElementById('secConfirm').value;
+      if (!cur || !next || !conf) { showToast('All fields required', true); return; }
+      if (next !== conf) { showToast('Passwords do not match', true); return; }
+      if (next.length < 6) { showToast('Min. 6 characters', true); return; }
+      try {
+        const res  = await fetch(_API + '/auth/change-password', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword: cur, newPassword: next })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeSecuritySettings();
+          showToast('Password changed successfully!');
+        } else {
+          showToast(data.error || 'Failed to change password', true);
+        }
+      } catch { showToast('Cannot connect to server', true); }
+    }
+
+    function openActual2FA() {
+      closeSecuritySettings();
+
+      const modal = document.getElementById('twofaSetupModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        if (typeof open2FASetup === 'function') open2FASetup();
+      } else {
+        showToast('2FA setup — go to My Builds > Security Settings');
+      }
+    }
+
+    async function disable2FA() {
+      if (!confirm('Disable Two-Factor Authentication? This will make your account less secure.')) return;
+      try {
+        const res  = await fetch(_API + '/2fa/disable', {
+          method: 'POST', credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) showToast('2FA disabled');
+        else showToast(data.error || 'Failed', true);
+      } catch { showToast('Cannot connect to server', true); }
+    }
+
+    window.open2FASetup = openSecuritySettings;
+    window.openSecuritySettings = openSecuritySettings;
+    window.closeSecuritySettings = closeSecuritySettings;
+    window.doChangePassword = doChangePassword;
+    window.openActual2FA = openActual2FA;
+    window.disable2FA = disable2FA;
+
     window.applySubFilter = applySubFilter;
     window.applyAllFilters = applyAllFilters;
     window.updateSidebarDots = updateSidebarDots;
@@ -2148,51 +2225,12 @@
       }
     });
 
-    function _secMsg(id, msg, isErr) {
-      const el = document.getElementById(id); if (!el) return;
-      if (!msg) { el.innerHTML = ''; return; }
-      const c = isErr ? '#ef4444' : '#22C55E';
-      const ic = isErr ? 'fa-exclamation-circle' : 'fa-check-circle';
-      el.innerHTML = '<div style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:8px;font-size:12px;color:'+c+';background:'+(isErr?'rgba(239,68,68,0.07)':'rgba(34,197,94,0.07)')+';border:1px solid '+(isErr?'rgba(239,68,68,0.2)':'rgba(34,197,94,0.2)')+';margin-bottom:10px;"><i class="fas '+ic+'"></i><span>'+msg+'</span></div>';
-    }
-    function _secLoad(id, on) {
-      const b = document.getElementById(id); if (!b) return;
-      b.disabled = on;
-      if (on) { b._h = b.innerHTML; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Please wait...'; }
-      else if (b._h) b.innerHTML = b._h;
-    }
-    function _secCountdown(elId, btnId, secs) {
-      const el = document.getElementById(elId), btn = document.getElementById(btnId);
-      if (btn) btn.disabled = true;
-      let r = secs;
-      (function tick() {
-        if (el) el.innerHTML = 'Resend in <b style="color:#00D4FF;">'+r+'s</b>';
-        if (r-- <= 0) { if (el) el.innerHTML = ''; if (btn) btn.disabled = false; return; }
-        setTimeout(tick, 1000);
-      })();
-    }
-
     function openSecuritySettings() {
-      ['secCurrent','secNew','secConfirm','secPwOtp','sec2faVerifyCode','sec2faDisableOtp'].forEach(id => {
+      ['secCurrent','secNew','secConfirm'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
-      ['sec-pw-msg','sec-pw-otp-msg','sec-2fa-msg','sec-2fa-disable-msg'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.innerHTML = '';
-      });
-      const pw1 = document.getElementById('sec-pw-step1');
-      const pw2 = document.getElementById('sec-pw-step2');
-      const s2fa = document.getElementById('sec-2fa-setup');
-      const d2fa = document.getElementById('sec-2fa-disable');
-      const ok2fa = document.getElementById('sec-2fa-done');
-      const main2fa = document.getElementById('sec-2fa-main');
-      if (pw1) pw1.style.display = '';
-      if (pw2) pw2.style.display = 'none';
-      if (s2fa) s2fa.style.display = 'none';
-      if (d2fa) d2fa.style.display = 'none';
-      if (ok2fa) ok2fa.style.display = 'none';
-      if (main2fa) main2fa.style.display = '';
-      _sec2faBadge();
       document.getElementById('securitySettingsModal').style.display = 'flex';
+
       document.getElementById('userDropdown')?.classList.remove('show');
       document.getElementById('userMenuTrigger')?.classList.remove('open');
     }
@@ -2201,170 +2239,59 @@
       document.getElementById('securitySettingsModal').style.display = 'none';
     }
 
-    function _sec2faBadge() {
-      const b = document.getElementById('sec-2fa-badge'); if (!b) return;
-      const u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-      if (u && u.twoFactorEnabled) {
-        b.textContent = 'ON'; b.style.cssText = 'font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:rgba(34,197,94,0.12);color:#22C55E;border:1px solid rgba(34,197,94,0.3);margin-left:6px;';
+    async function doChangePassword() {
+      const cur  = document.getElementById('secCurrent').value;
+      const next = document.getElementById('secNew').value;
+      const conf = document.getElementById('secConfirm').value;
+      if (!cur || !next || !conf) { showToast('All fields required', true); return; }
+      if (next !== conf) { showToast('Passwords do not match', true); return; }
+      if (next.length < 6) { showToast('Min. 6 characters', true); return; }
+      try {
+        const res  = await fetch(_API + '/auth/change-password', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword: cur, newPassword: next })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeSecuritySettings();
+          showToast('Password changed successfully!');
+        } else {
+          showToast(data.error || 'Failed to change password', true);
+        }
+      } catch { showToast('Cannot connect to server', true); }
+    }
+
+    function openActual2FA() {
+      closeSecuritySettings();
+
+      const modal = document.getElementById('twofaSetupModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        if (typeof open2FASetup === 'function') open2FASetup();
       } else {
-        b.textContent = 'OFF'; b.style.cssText = 'font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-left:6px;';
+        showToast('2FA setup — go to My Builds > Security Settings');
       }
     }
 
-    async function secSendPwOtp() {
-      const cur = document.getElementById('secCurrent').value;
-      const next = document.getElementById('secNew').value;
-      const conf = document.getElementById('secConfirm').value;
-      _secMsg('sec-pw-msg', '');
-      if (!cur || !next || !conf) { _secMsg('sec-pw-msg', 'All fields are required', true); return; }
-      if (next !== conf) { _secMsg('sec-pw-msg', 'Passwords do not match', true); return; }
-      if (next.length < 6) { _secMsg('sec-pw-msg', 'New password must be at least 6 characters', true); return; }
-      _secLoad('sec-pw-send-btn', true);
+    async function disable2FA() {
+      if (!confirm('Disable Two-Factor Authentication? This will make your account less secure.')) return;
       try {
-        const r = await fetch(_API + '/auth/send-security-otp', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ purpose: 'change_password' }) });
-        const d = await r.json();
-        _secLoad('sec-pw-send-btn', false);
-        if (d.success) {
-          document.getElementById('sec-pw-step1').style.display = 'none';
-          document.getElementById('sec-pw-step2').style.display = '';
-          document.getElementById('sec-pw-email-lbl').textContent = d.email || 'your email';
-          if (d.devToken) _secMsg('sec-pw-otp-msg', 'Dev code: ' + d.devToken, false);
-          _secCountdown('sec-pw-cd', null, 60);
-        } else { _secMsg('sec-pw-msg', d.error || 'Failed to send code', true); }
-      } catch { _secLoad('sec-pw-send-btn', false); _secMsg('sec-pw-msg', 'Cannot connect to server', true); }
+        const res  = await fetch(_API + '/2fa/disable', {
+          method: 'POST', credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) showToast('2FA disabled');
+        else showToast(data.error || 'Failed', true);
+      } catch { showToast('Cannot connect to server', true); }
     }
 
-    function secPwBack() {
-      document.getElementById('sec-pw-step2').style.display = 'none';
-      document.getElementById('sec-pw-step1').style.display = '';
-      _secMsg('sec-pw-otp-msg', '');
-    }
-
-    async function doChangePassword() {
-      const cur = document.getElementById('secCurrent').value;
-      const next = document.getElementById('secNew').value;
-      const otp = (document.getElementById('secPwOtp')?.value || '').trim();
-      _secMsg('sec-pw-otp-msg', '');
-      if (!otp || otp.length !== 6) { _secMsg('sec-pw-otp-msg', 'Enter the 6-digit code', true); return; }
-      _secLoad('sec-pw-confirm-btn', true);
-      try {
-        const vr = await fetch(_API + '/auth/verify-security-otp', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ code: otp, purpose: 'change_password' }) });
-        const vd = await vr.json();
-        if (!vd.success) { _secLoad('sec-pw-confirm-btn', false); _secMsg('sec-pw-otp-msg', vd.error || 'Invalid code', true); return; }
-        const r = await fetch(_API + '/auth/change-password', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ currentPassword: cur, newPassword: next }) });
-        const d = await r.json();
-        _secLoad('sec-pw-confirm-btn', false);
-        if (d.success) { closeSecuritySettings(); showToast('Password changed successfully!'); }
-        else _secMsg('sec-pw-otp-msg', d.error || 'Failed to change password', true);
-      } catch { _secLoad('sec-pw-confirm-btn', false); _secMsg('sec-pw-otp-msg', 'Cannot connect to server', true); }
-    }
-
-    async function secStart2FA() {
-      _secLoad('sec-2fa-setup-btn', true);
-      try {
-        const r = await fetch(_API + '/2fa/setup', { method: 'POST', credentials: 'include' });
-        const d = await r.json();
-        _secLoad('sec-2fa-setup-btn', false);
-        if (d.success) {
-          document.getElementById('sec-2fa-main').style.display = 'none';
-          document.getElementById('sec-2fa-setup').style.display = '';
-          const qr = document.getElementById('sec-qr');
-          if (qr) qr.innerHTML = '<img src="'+d.qrCode+'" style="width:150px;height:150px;border-radius:10px;border:2px solid rgba(0,212,255,0.2);" alt="QR">';
-          const sec = document.getElementById('sec-manual-secret');
-          if (sec) sec.textContent = d.secret || '';
-        } else _secMsg('sec-2fa-msg', d.error || 'Failed to start 2FA setup', true);
-      } catch { _secLoad('sec-2fa-setup-btn', false); _secMsg('sec-2fa-msg', 'Cannot connect to server', true); }
-    }
-
-    function sec2FASetupBack() {
-      document.getElementById('sec-2fa-setup').style.display = 'none';
-      document.getElementById('sec-2fa-main').style.display = '';
-      _secMsg('sec-2fa-msg', '');
-      const el = document.getElementById('sec2faVerifyCode'); if (el) el.value = '';
-    }
-
-    async function sec2FAVerify() {
-      const code = (document.getElementById('sec2faVerifyCode')?.value || '').trim();
-      _secMsg('sec-2fa-msg', '');
-      if (!code || code.length !== 6) { _secMsg('sec-2fa-msg', 'Enter the 6-digit code from your app', true); return; }
-      _secLoad('sec-2fa-verify-btn', true);
-      try {
-        const r = await fetch(_API + '/2fa/verify', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ token: code }) });
-        const d = await r.json();
-        _secLoad('sec-2fa-verify-btn', false);
-        if (d.success) {
-          document.getElementById('sec-2fa-setup').style.display = 'none';
-          document.getElementById('sec-2fa-done').style.display = '';
-          const rcEl = document.getElementById('sec-recovery-codes');
-          if (rcEl && d.recoveryCodes) rcEl.innerHTML = d.recoveryCodes.map(c => '<span style="display:inline-block;background:#080C14;border:1px solid rgba(0,212,255,0.15);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:800;color:#00D4FF;font-family:monospace;margin:2px;">'+c+'</span>').join('');
-          const u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-          if (u) { u.twoFactorEnabled = true; if (typeof setCurrentUser === 'function') setCurrentUser(u); }
-          _sec2faBadge();
-          showToast('2FA enabled successfully!');
-        } else _secMsg('sec-2fa-msg', d.error || 'Invalid code — check your authenticator app', true);
-      } catch { _secLoad('sec-2fa-verify-btn', false); _secMsg('sec-2fa-msg', 'Cannot connect to server', true); }
-    }
-
-    async function secSendDisable2FAOtp() {
-      _secLoad('sec-2fa-disable-btn', true);
-      try {
-        const r = await fetch(_API + '/auth/send-security-otp', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ purpose: 'disable_2fa' }) });
-        const d = await r.json();
-        _secLoad('sec-2fa-disable-btn', false);
-        if (d.success) {
-          document.getElementById('sec-2fa-main').style.display = 'none';
-          document.getElementById('sec-2fa-disable').style.display = '';
-          document.getElementById('sec-disable-email-lbl').textContent = d.email || 'your email';
-          if (d.devToken) _secMsg('sec-2fa-disable-msg', 'Dev code: ' + d.devToken, false);
-          _secCountdown('sec-disable-cd', null, 60);
-        } else _secMsg('sec-2fa-disable-msg', d.error || 'Failed to send code', true);
-      } catch { _secLoad('sec-2fa-disable-btn', false); _secMsg('sec-2fa-disable-msg', 'Cannot connect to server', true); }
-    }
-
-    function sec2FADisableBack() {
-      document.getElementById('sec-2fa-disable').style.display = 'none';
-      document.getElementById('sec-2fa-main').style.display = '';
-      _secMsg('sec-2fa-disable-msg', '');
-      const el = document.getElementById('sec2faDisableOtp'); if (el) el.value = '';
-    }
-
-    async function secConfirmDisable2FA() {
-      const otp = (document.getElementById('sec2faDisableOtp')?.value || '').trim();
-      _secMsg('sec-2fa-disable-msg', '');
-      if (!otp || otp.length !== 6) { _secMsg('sec-2fa-disable-msg', 'Enter the 6-digit verification code', true); return; }
-      _secLoad('sec-2fa-confirm-disable-btn', true);
-      try {
-        const vr = await fetch(_API + '/auth/verify-security-otp', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ code: otp, purpose: 'disable_2fa' }) });
-        const vd = await vr.json();
-        if (!vd.success) { _secLoad('sec-2fa-confirm-disable-btn', false); _secMsg('sec-2fa-disable-msg', vd.error || 'Invalid code', true); return; }
-        const r = await fetch(_API + '/2fa/disable', { method: 'POST', credentials: 'include' });
-        const d = await r.json();
-        _secLoad('sec-2fa-confirm-disable-btn', false);
-        if (d.success) {
-          document.getElementById('sec-2fa-disable').style.display = 'none';
-          document.getElementById('sec-2fa-main').style.display = '';
-          const u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-          if (u) { u.twoFactorEnabled = false; if (typeof setCurrentUser === 'function') setCurrentUser(u); }
-          _sec2faBadge();
-          showToast('2FA has been disabled.');
-        } else _secMsg('sec-2fa-disable-msg', d.error || 'Failed to disable 2FA', true);
-      } catch { _secLoad('sec-2fa-confirm-disable-btn', false); _secMsg('sec-2fa-disable-msg', 'Cannot connect to server', true); }
-    }
-
+    window.open2FASetup = openSecuritySettings;
     window.openSecuritySettings = openSecuritySettings;
     window.closeSecuritySettings = closeSecuritySettings;
-    window.open2FASetup = openSecuritySettings;
-    window.openActual2FA = openSecuritySettings;
-    window.disable2FA = secSendDisable2FAOtp;
     window.doChangePassword = doChangePassword;
-    window.secSendPwOtp = secSendPwOtp;
-    window.secPwBack = secPwBack;
-    window.secStart2FA = secStart2FA;
-    window.sec2FASetupBack = sec2FASetupBack;
-    window.sec2FAVerify = sec2FAVerify;
-    window.secSendDisable2FAOtp = secSendDisable2FAOtp;
-    window.sec2FADisableBack = sec2FADisableBack;
-    window.secConfirmDisable2FA = secConfirmDisable2FA;
+    window.openActual2FA = openActual2FA;
+    window.disable2FA = disable2FA;
 
     window.applySubFilter = applySubFilter;
     window.showToast = showToast;
@@ -2899,132 +2826,44 @@
 
   
   <div class="modal" id="securitySettingsModal" style="display:none;">
-    <div class="modal-content" style="max-width:480px;padding:0;overflow:hidden;border:1px solid rgba(0,212,255,0.2);border-radius:18px;">
-
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid rgba(0,212,255,0.1);background:linear-gradient(135deg,rgba(0,212,255,0.06),rgba(123,63,228,0.06));">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:34px;height:34px;border-radius:9px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);display:flex;align-items:center;justify-content:center;">
-            <i class="fas fa-shield-alt" style="color:#00D4FF;font-size:14px;"></i>
-          </div>
-          <div>
-            <div style="font-size:15px;font-weight:800;color:#D8EEFF;">Security Settings</div>
-            <div style="font-size:10px;color:#2a4560;letter-spacing:.06em;text-transform:uppercase;">Protect your account</div>
-          </div>
-        </div>
-        <button onclick="closeSecuritySettings()" style="background:rgba(255,255,255,0.05);border:none;color:#5a8aaa;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;">&times;</button>
+    <div class="modal-content" style="max-width:460px;">
+      <div class="modal-header">
+        <h2><i class="fas fa-shield-alt" style="color:var(--gold);margin-right:8px;"></i>Security Settings</h2>
+        <button class="modal-close" onclick="closeSecuritySettings()">&times;</button>
       </div>
 
-      <div style="padding:22px;max-height:78vh;overflow-y:auto;">
-
-        <div style="margin-bottom:24px;">
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px;">
-            <i class="fas fa-key" style="color:#00D4FF;font-size:12px;"></i>
-            <span style="font-size:13px;font-weight:800;color:#D8EEFF;">Change Password</span>
-          </div>
-
-          <div id="sec-pw-step1">
-            <div class="form-group" style="margin-bottom:10px;">
-              <label style="font-size:11px;font-weight:700;color:#5a8aaa;letter-spacing:.07em;text-transform:uppercase;">Current Password</label>
-              <input type="password" id="secCurrent" placeholder="Enter current password" style="background:#080C14;border-color:#1a2840;color:#D8EEFF;">
-            </div>
-            <div class="form-group" style="margin-bottom:10px;">
-              <label style="font-size:11px;font-weight:700;color:#5a8aaa;letter-spacing:.07em;text-transform:uppercase;">New Password</label>
-              <input type="password" id="secNew" placeholder="Min. 6 characters" style="background:#080C14;border-color:#1a2840;color:#D8EEFF;">
-            </div>
-            <div class="form-group" style="margin-bottom:14px;">
-              <label style="font-size:11px;font-weight:700;color:#5a8aaa;letter-spacing:.07em;text-transform:uppercase;">Confirm New Password</label>
-              <input type="password" id="secConfirm" placeholder="Repeat new password" style="background:#080C14;border-color:#1a2840;color:#D8EEFF;">
-            </div>
-            <div id="sec-pw-msg"></div>
-            <button id="sec-pw-send-btn" onclick="secSendPwOtp()" style="width:100%;background:linear-gradient(135deg,#00D4FF,#0090c0);color:#080C14;border:none;padding:11px;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;">
-              <i class="fas fa-paper-plane"></i> Send Verification Code to Email
-            </button>
-          </div>
-
-          <div id="sec-pw-step2" style="display:none;">
-            <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:10px;padding:14px;margin-bottom:14px;text-align:center;">
-              <i class="fas fa-envelope" style="color:#00D4FF;font-size:20px;margin-bottom:8px;display:block;"></i>
-              <div style="font-size:13px;font-weight:700;color:#D8EEFF;margin-bottom:4px;">Check your email</div>
-              <div style="font-size:12px;color:#5a8aaa;">6-digit code sent to <span id="sec-pw-email-lbl" style="color:#00D4FF;font-weight:700;"></span></div>
-            </div>
-            <div class="form-group" style="margin-bottom:14px;">
-              <label style="font-size:11px;font-weight:700;color:#5a8aaa;letter-spacing:.07em;text-transform:uppercase;">Enter 6-Digit Code</label>
-              <input type="text" id="secPwOtp" maxlength="6" placeholder="0  0  0  0  0  0" autocomplete="one-time-code" style="text-align:center;font-size:24px;font-weight:900;letter-spacing:.35em;background:#080C14;border-color:rgba(0,212,255,0.25);color:#00D4FF;">
-            </div>
-            <div id="sec-pw-otp-msg"></div>
-            <div style="font-size:10px;color:#2a4560;text-align:center;margin-bottom:12px;" id="sec-pw-cd"></div>
-            <div style="display:flex;gap:8px;">
-              <button onclick="secPwBack()" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid #1a2840;color:#5a8aaa;padding:10px;border-radius:9px;font-weight:700;font-size:12px;cursor:pointer;"><i class="fas fa-arrow-left"></i> Back</button>
-              <button id="sec-pw-confirm-btn" onclick="doChangePassword()" style="flex:2;background:linear-gradient(135deg,#00D4FF,#0090c0);color:#080C14;border:none;padding:10px;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="fas fa-check"></i> Confirm Change</button>
-            </div>
-          </div>
+      <div style="margin-bottom:20px;">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--text-primary);">Change Password</h3>
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" id="secCurrent" placeholder="Enter current password">
         </div>
-
-        <div style="border-top:1px solid #1a2840;margin-bottom:22px;"></div>
-
-        <div>
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
-            <i class="fas fa-mobile-alt" style="color:#00D4FF;font-size:12px;"></i>
-            <span style="font-size:13px;font-weight:800;color:#D8EEFF;">Two-Factor Authentication</span>
-            <span id="sec-2fa-badge"></span>
-          </div>
-          <div style="font-size:12px;color:#5a8aaa;margin-bottom:16px;line-height:1.5;">Use Google Authenticator for an extra layer of login security. Every sign-in requires a 6-digit code from your phone.</div>
-
-          <div id="sec-2fa-main">
-            <div style="display:flex;gap:8px;">
-              <button id="sec-2fa-setup-btn" onclick="secStart2FA()" style="flex:1;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.22);color:#00D4FF;padding:10px;border-radius:9px;font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;"><i class="fas fa-qrcode"></i> Enable 2FA</button>
-              <button id="sec-2fa-disable-btn" onclick="secSendDisable2FAOtp()" style="flex:1;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);color:#ef4444;padding:10px;border-radius:9px;font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;"><i class="fas fa-times"></i> Disable 2FA</button>
-            </div>
-          </div>
-
-          <div id="sec-2fa-setup" style="display:none;">
-            <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.12);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center;">
-              <div style="font-size:12px;font-weight:700;color:#5a8aaa;margin-bottom:10px;"><i class="fas fa-mobile-alt" style="color:#00D4FF;margin-right:5px;"></i>Scan with Google Authenticator</div>
-              <div id="sec-qr" style="margin-bottom:10px;display:flex;justify-content:center;"></div>
-              <div style="font-size:10px;color:#2a4560;margin-bottom:4px;">Can't scan? Enter this secret manually:</div>
-              <div id="sec-manual-secret" style="font-size:11px;font-weight:800;color:#00D4FF;letter-spacing:.1em;word-break:break-all;font-family:monospace;background:#080C14;padding:6px 10px;border-radius:6px;border:1px solid rgba(0,212,255,0.15);"></div>
-            </div>
-            <div class="form-group" style="margin-bottom:14px;">
-              <label style="font-size:11px;font-weight:700;color:#5a8aaa;letter-spacing:.07em;text-transform:uppercase;">Enter 6-Digit Code from App</label>
-              <input type="text" id="sec2faVerifyCode" maxlength="6" placeholder="0  0  0  0  0  0" autocomplete="one-time-code" style="text-align:center;font-size:24px;font-weight:900;letter-spacing:.35em;background:#080C14;border-color:rgba(0,212,255,0.25);color:#00D4FF;">
-            </div>
-            <div id="sec-2fa-msg"></div>
-            <div style="display:flex;gap:8px;">
-              <button onclick="sec2FASetupBack()" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid #1a2840;color:#5a8aaa;padding:10px;border-radius:9px;font-weight:700;font-size:12px;cursor:pointer;"><i class="fas fa-arrow-left"></i> Back</button>
-              <button id="sec-2fa-verify-btn" onclick="sec2FAVerify()" style="flex:2;background:linear-gradient(135deg,#00D4FF,#0090c0);color:#080C14;border:none;padding:10px;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="fas fa-shield-alt"></i> Activate 2FA</button>
-            </div>
-          </div>
-
-          <div id="sec-2fa-disable" style="display:none;">
-            <div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.18);border-radius:10px;padding:14px;margin-bottom:14px;text-align:center;">
-              <i class="fas fa-envelope" style="color:#ef4444;font-size:20px;margin-bottom:8px;display:block;"></i>
-              <div style="font-size:13px;font-weight:700;color:#D8EEFF;margin-bottom:4px;">Confirm via Email</div>
-              <div style="font-size:12px;color:#5a8aaa;">Code sent to <span id="sec-disable-email-lbl" style="color:#00D4FF;font-weight:700;"></span></div>
-            </div>
-            <div class="form-group" style="margin-bottom:14px;">
-              <label style="font-size:11px;font-weight:700;color:#5a8aaa;letter-spacing:.07em;text-transform:uppercase;">Enter 6-Digit Code</label>
-              <input type="text" id="sec2faDisableOtp" maxlength="6" placeholder="0  0  0  0  0  0" autocomplete="one-time-code" style="text-align:center;font-size:24px;font-weight:900;letter-spacing:.35em;background:#080C14;border-color:rgba(239,68,68,0.25);color:#ef4444;">
-            </div>
-            <div style="font-size:10px;color:#2a4560;text-align:center;margin-bottom:12px;" id="sec-disable-cd"></div>
-            <div id="sec-2fa-disable-msg"></div>
-            <div style="display:flex;gap:8px;">
-              <button onclick="sec2FADisableBack()" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid #1a2840;color:#5a8aaa;padding:10px;border-radius:9px;font-weight:700;font-size:12px;cursor:pointer;"><i class="fas fa-arrow-left"></i> Back</button>
-              <button id="sec-2fa-confirm-disable-btn" onclick="secConfirmDisable2FA()" style="flex:2;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);color:#ef4444;padding:10px;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="fas fa-times"></i> Confirm Disable</button>
-            </div>
-          </div>
-
-          <div id="sec-2fa-done" style="display:none;">
-            <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:20px;text-align:center;">
-              <i class="fas fa-check-circle" style="color:#22C55E;font-size:30px;margin-bottom:10px;display:block;"></i>
-              <div style="font-size:14px;font-weight:800;color:#D8EEFF;margin-bottom:6px;">2FA Enabled!</div>
-              <div style="font-size:12px;color:#5a8aaa;margin-bottom:14px;">Your account is now protected with Google Authenticator.</div>
-              <div style="font-size:11px;font-weight:700;color:#5a8aaa;margin-bottom:8px;">RECOVERY CODES — SAVE THESE NOW:</div>
-              <div id="sec-recovery-codes" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-bottom:12px;"></div>
-              <div style="font-size:11px;color:#ef4444;font-weight:600;"><i class="fas fa-exclamation-triangle"></i> You will not see these codes again.</div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="secNew" placeholder="Min. 6 characters">
         </div>
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <input type="password" id="secConfirm" placeholder="Repeat new password">
+        </div>
+        <button class="submit-btn" onclick="doChangePassword()" style="width:100%;margin-top:4px;">
+          <i class="fas fa-key"></i> Change Password
+        </button>
+      </div>
 
+      <hr style="border:none;border-top:1px solid #222;margin:20px 0;">
+
+      <div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px;color:var(--text-primary);">Two-Factor Authentication (2FA)</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:14px;">Add an extra layer of security using Google Authenticator.</p>
+        <div style="display:flex;gap:10px;">
+          <button class="submit-btn" onclick="openActual2FA()" style="flex:1;background:rgba(0,212,255,0.15);color:var(--gold);border:1px solid rgba(0,212,255,0.3);">
+            <i class="fas fa-qrcode"></i> Setup 2FA
+          </button>
+          <button class="submit-btn" onclick="disable2FA()" style="flex:1;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.25);">
+            <i class="fas fa-times"></i> Disable 2FA
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -3761,14 +3600,32 @@ if ('serviceWorker' in navigator) {
 
   var _origAdd = window.addToBuild;
   window.addToBuild = function(btn) {
-    if (typeof _origAdd === 'function') _origAdd.apply(this, arguments);
+    if (typeof (_origAdd === 'function') _origAdd.apply(this, arguments);
+    updateWattageBar();
+    checkBottleneck();
   };
-
-  window.updateWattageBar = updateWattageBar;
-  window.checkBottleneck = checkBottleneck;
 
 })();
 </script>
 
+<style>
+  /* FORCE BLUE THEME - overrides everything */
+  :root {
+    --gold: #00D4FF !important;
+    --gold-dark: #0099CC !important;
+    --gold-dim: rgba(0,212,255,0.12) !important;
+    --gold-border: rgba(0,212,255,0.28) !important;
+    --bg-dark: #080C14 !important;
+    --bg-darker: #050810 !important;
+    --bg-card: #0e1520 !important;
+    --bg-hover: #131e2e !important;
+    --bg-surface: #111a28 !important;
+    --text-primary: #D8EEFF !important;
+    --text-secondary: #5a8aaa !important;
+    --text-muted: #2a4560 !important;
+    --border: #1a2840 !important;
+    --border-light: #1f3050 !important;
+  }
+</style>
 </body>
 </html>

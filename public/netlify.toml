@@ -1,5 +1,8 @@
-[build]
+﻿[build]
   publish = "public"
+
+[build.environment]
+  NPM_CONFIG_REGISTRY = "https://registry.npmjs.org/"
 
 [[redirects]]
   from = "/*"
