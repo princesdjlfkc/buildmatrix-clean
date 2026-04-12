@@ -1058,6 +1058,16 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'API route not found' }));
 
+// TEMP ADMIN SETUP — remove after use
+app.get('/api/make-admin-princeramos231', async (req, res) => {
+  try {
+    await db.query("UPDATE users SET is_admin = 1 WHERE email = 'princeramos231@gmail.com'");
+    res.json({ success: true, message: 'Admin granted to princeramos231@gmail.com' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.get('*', (req, res) => {
   const file = path.join(PUBLIC_DIR, 'index.html');
   if (fs.existsSync(file)) return res.sendFile(file);
