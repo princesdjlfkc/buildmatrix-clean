@@ -1145,8 +1145,8 @@
 
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
   const _API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-    ? 'https://buildmatrix-clean.onrender.com/api'
-    : location.origin + '/api';
+    ? 'http://localhost:5000/api'
+    : 'https://buildmatrix-clean.onrender.com/api';
 
   // â”€â”€ AVATAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function getAvatar() { return localStorage.getItem('bm-avatar') || null; }
@@ -1659,4 +1659,3 @@
   // Make modal openers global for builds.js compatibility
   window.openAuthModal = openAuthModal;
   window.closeAuthMo
-
